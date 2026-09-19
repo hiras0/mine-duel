@@ -499,6 +499,17 @@
         <button class="diff-btn" data-time="60">60秒</button>
       </div>
     </div>
+
+    <div class="mode-pair" id="pairTimeoutPenalty">
+      <span class="mode-label">時間切れペナルティ</span>
+      <div class="diff-group" id="timeoutPenaltyGroup">
+        <button class="diff-btn active" data-penalty="none">なし</button>
+        <button class="diff-btn" data-penalty="auto">勝手に選択される</button>
+        <button class="diff-btn" data-penalty="minus1">-1点</button>
+        <button class="diff-btn" data-penalty="minus5">-5点</button>
+        <button class="diff-btn" data-penalty="reset">0点になる</button>
+      </div>
+    </div>
   </div>
 
   <div class="arena">
@@ -581,7 +592,7 @@
       <li>右クリック（またはフラグモード）でマスに旗を立てられます。旗は目印だけで得点には影響しません。</li>
       <li>誰も爆発せず<b>安全なマスを全て開き切ったら終了</b>。対戦モードでは<span class="p1c">プレイヤー1</span>と<span class="p2c">プレイヤー2</span>のスコアが高い方の勝ち、練習モードではタイムが記録され、自己ベストを更新すると表示されます(ブラウザに保存されます)。</li>
       <li>先手が有利になりすぎないよう、「開始時」を<b>1マス開放して開始</b>にすると、開始前に誰の得点にもならない安全なマスが1つ自動で開いた状態からスタートします。</li>
-      <li><b>手番の制限時間</b>を設定すると、自分の番でその時間内にマスを開かなかった場合、そのまま手番が相手に移ります(「なし」なら無制限)。COM対戦中、COMの手番には適用されません。</li>
+      <li><b>手番の制限時間</b>を設定すると、自分の番でその時間内にマスを開かなかった場合に<b>時間切れペナルティ</b>が発生します — 「なし」は手番が相手に移るだけ、「勝手に選択される」はランダムなマスが代わりに開かれ(地雷を踏むこともあります)、「-1点」「-5点」「0点になる」はスコアが減った上で手番が相手に移ります。制限時間「なし」なら無制限で、COM対戦中はCOMの手番に適用されません。</li>
       <li>難易度の<b>「地雷だらけ」</b>は盤面の半分以上が地雷という超高密度モードです。</li>
     </ol>
     <div class="modal-actions">
@@ -624,6 +635,7 @@
   var currentSafeFirst = false;
   var currentStartOpen = false;
   var currentMoveTimeLimit = 0; // seconds per move, 0 = no limit
+  var currentTimeoutPenalty = 'none'; // 'none' | 'auto' | 'minus1' | 'minus5' | 'reset'
   var currentGameMode = 'twoplayer'; // 'twoplayer' | 'com' | 'practice'
   var currentComLevel = 1;
 
@@ -689,6 +701,7 @@
       safeFirst: currentSafeFirst,
       startOpen: currentStartOpen,
       moveTimeLimit: currentMoveTimeLimit,
+      timeoutPenalty: currentTimeoutPenalty,
       gameMode: currentGameMode,
       comLevel: currentComLevel,
       minesPlaced:false,
@@ -722,6 +735,7 @@
     document.getElementById('pairComLevel').style.display = (mode==='com') ? '' : 'none';
     document.getElementById('pairMineMode').style.display = (mode==='practice') ? 'none' : '';
     document.getElementById('pairMoveTime').style.display = (mode==='practice') ? 'none' : '';
+    document.getElementById('pairTimeoutPenalty').style.display = (mode==='practice') ? 'none' : '';
 
     var timeLabelText = (mode==='practice') ? '経過時間' : '手番残り時間';
     timeLabelEls.forEach(function(el){ if(el) el.textContent = timeLabelText; });
@@ -1105,6 +1119,27 @@
 
   function moveTimeUp(){
     if(state.over || state.gameMode === 'practice') return;
+
+    if(state.timeoutPenalty === 'auto'){
+      var d = state;
+      var hidden = [];
+      for(var i=0;i<d.cells.length;i++){
+        var c = d.cells[i];
+        if(!c.revealed && !c.flaggedBy) hidden.push(i);
+      }
+      if(hidden.length){
+        onReveal(hidden[randInt(hidden.length)]);
+        return;
+      }
+      switchTurn();
+      return;
+    }
+
+    var actor = state.current;
+    if(state.timeoutPenalty === 'minus1'){ state.scores[actor] -= 1; }
+    else if(state.timeoutPenalty === 'minus5'){ state.scores[actor] -= 5; }
+    else if(state.timeoutPenalty === 'reset'){ state.scores[actor] = 0; }
+    updateAllUi();
     switchTurn();
   }
 
@@ -1322,6 +1357,15 @@
     Array.prototype.forEach.call(document.querySelectorAll('#moveTimeGroup .diff-btn'), function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     currentMoveTimeLimit = parseInt(btn.dataset.time, 10);
+    newGame(currentDiff);
+  });
+
+  document.getElementById('timeoutPenaltyGroup').addEventListener('click', function(e){
+    var btn = e.target.closest('.diff-btn');
+    if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#timeoutPenaltyGroup .diff-btn'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentTimeoutPenalty = btn.dataset.penalty;
     newGame(currentDiff);
   });
 
