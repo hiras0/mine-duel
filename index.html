@@ -43,6 +43,7 @@
   }
 
   *{box-sizing:border-box; border-radius:0 !important;}
+  button{ touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   body{
     background:var(--bg);
     color:var(--text);
@@ -1397,6 +1398,7 @@
     if(e.pointerType === 'mouse' && e.button !== 0) return;
     var target = e.target.closest('.cell');
     if(!target) return;
+    setSmileyFace('pressed');
     longPressFired = false;
     longPressCellIdx = parseInt(target.dataset.idx, 10);
     longPressStartX = e.clientX;
@@ -1436,10 +1438,7 @@
     onFlagToggle(i);
   });
 
-  boardEl.addEventListener('mousedown', function(e){
-    if(e.button === 0 && !state.over && !isBoardLocked()) setSmileyFace('pressed');
-  });
-  window.addEventListener('mouseup', function(){
+  window.addEventListener('pointerup', function(){
     if(state && !state.over) setSmileyFace('normal');
   });
 
