@@ -289,9 +289,28 @@
   .board-wrap{
     grid-area:board;
     display:flex;
-    justify-content:center;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
     padding:4px;
   }
+  .smiley-btn{
+    appearance:none;
+    width:48px;
+    height:48px;
+    border:3px outset var(--face);
+    background:var(--face);
+    font-size:24px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    padding:0;
+    flex-shrink:0;
+  }
+  .smiley-btn:hover{ background:var(--face-light); }
+  .smiley-btn:active{ border-style:inset; }
   .board{
     display:grid;
     gap:1px;
@@ -312,6 +331,9 @@
     font-size:clamp(9px,2.4vw,15px);
     cursor:pointer;
     user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
     position:relative;
   }
   .cell:hover:not(.revealed):not(.flagged){background:var(--cell-hover);}
@@ -448,16 +470,15 @@
         <button class="diff-btn" data-diff="party">地雷だらけ</button>
       </div>
       <button class="icon-btn" id="rulesBtn">？ ルール</button>
-      <button class="icon-btn" id="restartBtn">↻ リスタート</button>
     </div>
   </header>
 
   <div class="mode-row">
     <span class="mode-label">モード</span>
     <div class="diff-group" id="gameModeGroup">
-      <button class="diff-btn active" data-gmode="twoplayer">2人対戦</button>
+      <button class="diff-btn" data-gmode="twoplayer">2人対戦</button>
       <button class="diff-btn" data-gmode="com">COM対戦</button>
-      <button class="diff-btn" data-gmode="practice">練習(タイムアタック)</button>
+      <button class="diff-btn active" data-gmode="practice">練習(タイムアタック)</button>
     </div>
 
     <div class="mode-pair" id="pairComLevel">
@@ -475,15 +496,15 @@
       <span class="mode-label">地雷モード</span>
       <div class="diff-group" id="mineModeGroup">
         <button class="diff-btn" data-mode="penalty">-5点</button>
-        <button class="diff-btn" data-mode="reset">0点リセット</button>
-        <button class="diff-btn active" data-mode="instant">即敗北</button>
+        <button class="diff-btn active" data-mode="reset">0点リセット</button>
+        <button class="diff-btn" data-mode="instant">即敗北</button>
       </div>
     </div>
 
     <span class="mode-label">初手</span>
     <div class="diff-group" id="safeFirstGroup">
-      <button class="diff-btn active" data-safe="off">安全なし</button>
-      <button class="diff-btn" data-safe="on">1マス目は安全</button>
+      <button class="diff-btn" data-safe="off">安全なし</button>
+      <button class="diff-btn active" data-safe="on">1マス目は安全</button>
     </div>
     <span class="mode-label">開始時</span>
     <div class="diff-group" id="startOpenGroup">
@@ -494,9 +515,9 @@
     <div class="mode-pair" id="pairMoveTime">
       <span class="mode-label">手番の制限時間</span>
       <div class="diff-group" id="moveTimeGroup">
-        <button class="diff-btn active" data-time="0">なし</button>
+        <button class="diff-btn" data-time="0">なし</button>
         <button class="diff-btn" data-time="5">5秒</button>
-        <button class="diff-btn" data-time="10">10秒</button>
+        <button class="diff-btn active" data-time="10">10秒</button>
         <button class="diff-btn" data-time="30">30秒</button>
         <button class="diff-btn" data-time="60">60秒</button>
       </div>
@@ -505,8 +526,8 @@
     <div class="mode-pair" id="pairTimeoutPenalty">
       <span class="mode-label">時間切れペナルティ</span>
       <div class="diff-group" id="timeoutPenaltyGroup">
-        <button class="diff-btn active" data-penalty="none">なし</button>
-        <button class="diff-btn" data-penalty="auto">勝手に選択される</button>
+        <button class="diff-btn" data-penalty="none">なし</button>
+        <button class="diff-btn active" data-penalty="auto">勝手に選択される</button>
         <button class="diff-btn" data-penalty="minus1">-1点</button>
         <button class="diff-btn" data-penalty="minus5">-5点</button>
         <button class="diff-btn" data-penalty="reset">0点になる</button>
@@ -537,6 +558,7 @@
     </div>
 
     <div class="board-wrap">
+      <button class="smiley-btn" id="smileyBtn" type="button" aria-label="リスタート">🙂</button>
       <div class="board" id="board"></div>
     </div>
 
@@ -592,7 +614,8 @@
       <li>対戦モードでは1つの盤面を<b>交互に</b>クリックして開いていきます。「初手」の設定が<b>安全なし</b>なら最初の一手にも地雷の危険があり、<b>1マス目は安全</b>なら最初にクリックしたマスとその周囲には地雷が置かれません。</li>
       <li>安全なマスを開くと、<b>開いたマスの数だけ得点</b>（連鎖も加算）。練習モードではスコアより経過時間が記録されます。</li>
       <li>対戦モードで地雷を踏んだときの結果は<b>地雷モード</b>で選べます — 「即敗北」はその場でゲーム終了・相手の勝ち、「0点リセット」は踏んだ人のスコアが0に、「-5点」は踏んだ人が-5点。練習モードでは地雷を踏むと即失敗になります。</li>
-      <li>右クリック（またはフラグモード）でマスに旗を立てられます。旗は目印だけで得点には影響しません。</li>
+      <li>右クリック・長押し（またはフラグモード）でマスに旗を立てられます。旗は目印だけで得点には影響しません。</li>
+      <li>盤面上のニコちゃんマークをクリックするといつでもリスタートできます。マスを押している間は驚き顔、盤面をクリアすると😎、地雷を踏んでゲームが終わると😵になります。</li>
       <li>誰も爆発せず<b>安全なマスを全て開き切ったら終了</b>。対戦モードでは<span class="p1c">プレイヤー1</span>と<span class="p2c">プレイヤー2</span>のスコアが高い方の勝ち、練習モードではタイムが記録され、自己ベストを更新すると表示されます(ブラウザに保存されます)。</li>
       <li>先手が有利になりすぎないよう、「開始時」を<b>1マス開放して開始</b>にすると、開始前に誰の得点にもならない安全なマスが1つ自動で開いた状態からスタートします。</li>
       <li><b>手番の制限時間</b>を設定すると、自分の番でその時間内にマスを開かなかった場合に<b>時間切れペナルティ</b>が発生します — 「なし」は手番が相手に移るだけ、「勝手に選択される」はランダムなマスが代わりに開かれ(地雷を踏むこともあります)、「-1点」「-5点」「0点になる」はスコアが減った上で手番が相手に移ります。制限時間「なし」なら無制限で、COM対戦中はCOMの手番に適用されません。</li>
@@ -617,6 +640,11 @@
   var NUM_CLASS = ["","n1","n2","n3","n4","n5","n6","n7","n8"];
 
   var boardEl = document.getElementById('board');
+  var smileyBtn = document.getElementById('smileyBtn');
+  var SMILEY_FACES = { normal:'🙂', pressed:'😮', win:'😎', lose:'😵' };
+  function setSmileyFace(kind){
+    if(smileyBtn) smileyBtn.textContent = SMILEY_FACES[kind] || SMILEY_FACES.normal;
+  }
   var score1El = document.getElementById('score1');
   var score2El = document.getElementById('score2');
   var hits1El = document.getElementById('hits1');
@@ -634,12 +662,12 @@
   var state = null;
   var flagMode = false;
   var currentDiff = 'medium';
-  var currentMineMode = 'instant'; // 'instant' | 'reset' | 'penalty'
-  var currentSafeFirst = false;
+  var currentMineMode = 'reset'; // 'instant' | 'reset' | 'penalty'
+  var currentSafeFirst = true;
   var currentStartOpen = false;
-  var currentMoveTimeLimit = 0; // seconds per move, 0 = no limit
-  var currentTimeoutPenalty = 'none'; // 'none' | 'auto' | 'minus1' | 'minus5' | 'reset'
-  var currentGameMode = 'twoplayer'; // 'twoplayer' | 'com' | 'practice'
+  var currentMoveTimeLimit = 10; // seconds per move, 0 = no limit
+  var currentTimeoutPenalty = 'auto'; // 'none' | 'auto' | 'minus1' | 'minus5' | 'reset'
+  var currentGameMode = 'practice'; // 'twoplayer' | 'com' | 'practice'
   var currentComLevel = 1;
 
   var moveTimerInterval = null;
@@ -683,6 +711,7 @@
 
   function newGame(diffKey){
     clearAllTimers();
+    setSmileyFace('normal');
     currentDiff = diffKey;
     var d = DIFFS[diffKey];
     var total = d.rows*d.cols;
@@ -1018,6 +1047,7 @@
     if(state.mineMode === 'instant'){
       state.over = true;
       clearMoveTimerInterval();
+      setSmileyFace('lose');
       revealRemainingMines();
       updateScoreboard();
       var winner = hitter===1 ? 2 : 1;
@@ -1055,6 +1085,7 @@
   function endGame(){
     state.over = true;
     clearMoveTimerInterval();
+    setSmileyFace('win');
     revealRemainingMines();
     updateScoreboard();
 
@@ -1184,6 +1215,7 @@
   function practiceSucceed(){
     state.over = true;
     stopPracticeTimer();
+    setSmileyFace('win');
     var elapsedSec = state.practiceElapsedMs/1000;
     var best = getBestTime(currentDiff);
     var isNew = (best===null || elapsedSec < best);
@@ -1194,6 +1226,7 @@
   function practiceFail(){
     state.over = true;
     stopPracticeTimer();
+    setSmileyFace('lose');
     revealRemainingMines();
     var elapsedSec = state.practiceElapsedMs/1000;
     var best = getBestTime(currentDiff);
@@ -1348,7 +1381,45 @@
     return state.gameMode === 'com' && state.current === 2;
   }
 
+  var LONG_PRESS_MS = 500;
+  var LONG_PRESS_MOVE_TOLERANCE = 10;
+  var longPressTimer = null;
+  var longPressCellIdx = null;
+  var longPressFired = false;
+  var longPressStartX = 0, longPressStartY = 0;
+
+  function cancelLongPress(){
+    if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+  }
+
+  boardEl.addEventListener('pointerdown', function(e){
+    if(isBoardLocked() || state.over) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    var target = e.target.closest('.cell');
+    if(!target) return;
+    longPressFired = false;
+    longPressCellIdx = parseInt(target.dataset.idx, 10);
+    longPressStartX = e.clientX;
+    longPressStartY = e.clientY;
+    cancelLongPress();
+    longPressTimer = setTimeout(function(){
+      longPressTimer = null;
+      longPressFired = true;
+      onFlagToggle(longPressCellIdx);
+      if(navigator.vibrate){ try{ navigator.vibrate(15); }catch(err){} }
+    }, LONG_PRESS_MS);
+  });
+  boardEl.addEventListener('pointermove', function(e){
+    if(!longPressTimer) return;
+    var dx = e.clientX - longPressStartX, dy = e.clientY - longPressStartY;
+    if(Math.sqrt(dx*dx + dy*dy) > LONG_PRESS_MOVE_TOLERANCE) cancelLongPress();
+  });
+  boardEl.addEventListener('pointerup', cancelLongPress);
+  boardEl.addEventListener('pointerleave', cancelLongPress);
+  boardEl.addEventListener('pointercancel', cancelLongPress);
+
   boardEl.addEventListener('click', function(e){
+    if(longPressFired){ longPressFired = false; return; }
     if(isBoardLocked()) return;
     var target = e.target.closest('.cell');
     if(!target) return;
@@ -1356,12 +1427,20 @@
     if(flagMode) onFlagToggle(i); else onReveal(i);
   });
   boardEl.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    if(longPressFired){ longPressFired = false; return; }
     if(isBoardLocked()) return;
     var target = e.target.closest('.cell');
     if(!target) return;
-    e.preventDefault();
     var i = parseInt(target.dataset.idx, 10);
     onFlagToggle(i);
+  });
+
+  boardEl.addEventListener('mousedown', function(e){
+    if(e.button === 0 && !state.over && !isBoardLocked()) setSmileyFace('pressed');
+  });
+  window.addEventListener('mouseup', function(){
+    if(state && !state.over) setSmileyFace('normal');
   });
 
   function setFlagMode(on){
@@ -1447,7 +1526,7 @@
     newGame(currentDiff);
   });
 
-  document.getElementById('restartBtn').addEventListener('click', function(){ newGame(currentDiff); });
+  smileyBtn.addEventListener('click', function(){ newGame(currentDiff); });
   document.getElementById('playAgainBtn').addEventListener('click', function(){ newGame(currentDiff); });
 
   document.getElementById('rulesBtn').addEventListener('click', function(){
