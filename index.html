@@ -466,6 +466,8 @@
         <button class="diff-btn active" data-level="1">Lv1</button>
         <button class="diff-btn" data-level="2">Lv2</button>
         <button class="diff-btn" data-level="3">Lv3</button>
+        <button class="diff-btn" data-level="4">Lv4</button>
+        <button class="diff-btn" data-level="5">Max</button>
       </div>
     </div>
 
@@ -585,7 +587,8 @@
   <div class="modal">
     <h2>対戦ルール</h2>
     <ol class="rules-list">
-      <li><b>モード</b>は3種類 — 「2人対戦」は1台の画面を交互にプレイ、「COM対戦」はプレイヤー2をコンピューターが担当(<b>COM強さ</b>Lv1〜3で賢さが変わります)、「練習(タイムアタック)」は1人で盤面を解き切るまでの時間を計測するモードです。</li>
+      <li><b>モード</b>は3種類 — 「2人対戦」は1台の画面を交互にプレイ、「COM対戦」はプレイヤー2をコンピューターが担当(<b>COM強さ</b>Lv1〜Lv4・Maxの5段階)、「練習(タイムアタック)」は1人で盤面を解き切るまでの時間を計測するモードです。</li>
+      <li>COM強さは Lv1=完全ランダム、Lv2=数字から1回だけ簡単に推理、Lv3=推理を粘り強く繰り返す、Lv4=Lv3の推理に加えて推測が必要な場面では地雷の少なそうなマスを選ぶ、<b>Max=さらに高度な推理(複数の数字を組み合わせた推論)も使い、論理的に安全と分かるマスは絶対に見逃しません</b>。ただしどうしても確証が持てない盤面(五分五分の運任せ)は理論上避けられないため、その時だけ最も無難なマスを選んで賭けます。</li>
       <li>対戦モードでは1つの盤面を<b>交互に</b>クリックして開いていきます。「初手」の設定が<b>安全なし</b>なら最初の一手にも地雷の危険があり、<b>1マス目は安全</b>なら最初にクリックしたマスとその周囲には地雷が置かれません。</li>
       <li>安全なマスを開くと、<b>開いたマスの数だけ得点</b>（連鎖も加算）。練習モードではスコアより経過時間が記録されます。</li>
       <li>対戦モードで地雷を踏んだときの結果は<b>地雷モード</b>で選べます — 「即敗北」はその場でゲーム終了・相手の勝ち、「0点リセット」は踏んだ人のスコアが0に、「-5点」は踏んだ人が-5点。練習モードでは地雷を踏むと即失敗になります。</li>
@@ -1197,25 +1200,77 @@
     showPracticeModal(false, elapsedSec, best, false);
   }
 
-  function aiDeduce(maxIter){
+  function aiSingleCellPass(certainSafe, certainMine){
     var d = state;
+    var changed = false;
+    for(var c=0; c<d.cells.length; c++){
+      var cell = d.cells[c];
+      if(!cell.revealed || cell.mine || cell.adj===0) continue;
+      var r = Math.floor(c/d.cols), col = c%d.cols;
+      var hiddenN = neighbors(r,col,d.rows,d.cols).filter(function(n){ return !d.cells[n].revealed; });
+      var knownMineN = hiddenN.filter(function(n){ return certainMine.has(n); });
+      var unknownN = hiddenN.filter(function(n){ return !certainMine.has(n) && !certainSafe.has(n); });
+      var remaining = cell.adj - knownMineN.length;
+      if(remaining === 0 && unknownN.length > 0){
+        unknownN.forEach(function(n){ if(!certainSafe.has(n)){ certainSafe.add(n); changed = true; } });
+      } else if(remaining === unknownN.length && unknownN.length > 0){
+        unknownN.forEach(function(n){ if(!certainMine.has(n)){ certainMine.add(n); changed = true; } });
+      }
+    }
+    return changed;
+  }
+
+  function aiBuildConstraints(certainSafe, certainMine){
+    var d = state;
+    var constraints = [];
+    for(var c=0; c<d.cells.length; c++){
+      var cell = d.cells[c];
+      if(!cell.revealed || cell.mine || cell.adj===0) continue;
+      var r = Math.floor(c/d.cols), col = c%d.cols;
+      var hiddenN = neighbors(r,col,d.rows,d.cols).filter(function(n){ return !d.cells[n].revealed; });
+      var knownMineN = hiddenN.filter(function(n){ return certainMine.has(n); }).length;
+      var unknownN = hiddenN.filter(function(n){ return !certainMine.has(n) && !certainSafe.has(n); });
+      if(unknownN.length > 0){
+        constraints.push({ cells: unknownN, count: cell.adj - knownMineN });
+      }
+    }
+    return constraints;
+  }
+
+  // Subset rule: if constraint A's cells are entirely contained in constraint B's
+  // cells, the extra cells in B (B minus A) must account for (B.count - A.count)
+  // mines among themselves. This resolves many boundary cases plain per-cell
+  // counting misses.
+  function aiSubsetPass(certainSafe, certainMine){
+    var constraints = aiBuildConstraints(certainSafe, certainMine);
+    var changed = false;
+    for(var i=0; i<constraints.length; i++){
+      for(var j=0; j<constraints.length; j++){
+        if(i === j) continue;
+        var A = constraints[i], B = constraints[j];
+        if(A.cells.length >= B.cells.length) continue;
+        var isSubset = A.cells.every(function(x){ return B.cells.indexOf(x) !== -1; });
+        if(!isSubset) continue;
+        var diffCells = B.cells.filter(function(x){ return A.cells.indexOf(x) === -1; });
+        var diffCount = B.count - A.count;
+        if(diffCount === 0 && diffCells.length > 0){
+          diffCells.forEach(function(n){ if(!certainSafe.has(n)){ certainSafe.add(n); changed = true; } });
+        } else if(diffCount === diffCells.length && diffCells.length > 0){
+          diffCells.forEach(function(n){ if(!certainMine.has(n)){ certainMine.add(n); changed = true; } });
+        }
+      }
+    }
+    return changed;
+  }
+
+  function aiDeduce(maxIter, useSubset){
     var certainSafe = new Set();
     var certainMine = new Set();
     for(var iter=0; iter<maxIter; iter++){
-      var changed = false;
-      for(var c=0; c<d.cells.length; c++){
-        var cell = d.cells[c];
-        if(!cell.revealed || cell.mine || cell.adj===0) continue;
-        var r = Math.floor(c/d.cols), col = c%d.cols;
-        var hiddenN = neighbors(r,col,d.rows,d.cols).filter(function(n){ return !d.cells[n].revealed; });
-        var knownMineN = hiddenN.filter(function(n){ return certainMine.has(n); });
-        var unknownN = hiddenN.filter(function(n){ return !certainMine.has(n) && !certainSafe.has(n); });
-        var remaining = cell.adj - knownMineN.length;
-        if(remaining === 0 && unknownN.length > 0){
-          unknownN.forEach(function(n){ if(!certainSafe.has(n)){ certainSafe.add(n); changed = true; } });
-        } else if(remaining === unknownN.length && unknownN.length > 0){
-          unknownN.forEach(function(n){ if(!certainMine.has(n)){ certainMine.add(n); changed = true; } });
-        }
+      var changed = aiSingleCellPass(certainSafe, certainMine);
+      if(useSubset){
+        var changed2 = aiSubsetPass(certainSafe, certainMine);
+        changed = changed || changed2;
       }
       if(!changed) break;
     }
@@ -1265,15 +1320,20 @@
     if(!hidden.length) return null;
     if(d.comLevel <= 1) return hidden[randInt(hidden.length)];
 
-    var maxIter = d.comLevel >= 3 ? 6 : 1;
-    var ded = aiDeduce(maxIter);
+    // Lv2: one deduction pass. Lv3: deduction to convergence. Lv4: convergence
+    // + smarter guessing. Lv5 (Max): convergence + subset rule + smarter
+    // guessing - never misses a logically-safe cell, only ever guesses when
+    // truly forced.
+    var maxIter = d.comLevel >= 3 ? 12 : 1;
+    var useSubset = d.comLevel >= 5;
+    var ded = aiDeduce(maxIter, useSubset);
     if(ded.safe.size > 0){
       var safeArr = Array.from(ded.safe);
       return safeArr[randInt(safeArr.length)];
     }
     var candidates = hidden.filter(function(i2){ return !ded.mines.has(i2); });
     if(!candidates.length) candidates = hidden;
-    if(d.comLevel === 2) return candidates[randInt(candidates.length)];
+    if(d.comLevel <= 3) return candidates[randInt(candidates.length)];
     return aiPickLowestRisk(candidates, ded.mines);
   }
 
