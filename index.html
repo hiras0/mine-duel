@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>マインデュエル</title>
+<style>
+  html, body{ margin:0; padding:0; }
+  :root{
+    --bg:#c0c0c0;
+    --face:#c0c0c0;
+    --face-light:#dfdfdf;
+    --panel:#c0c0c0;
+    --panel-soft:#bdbdbd;
+    --line:#808080;
+    --text:#000000;
+    --text-dim:#3a3a3a;
+    --text-faint:#5a5a5a;
+
+    --p1:#000080;
+    --p1-soft:rgba(0,0,128,.16);
+    --p2:#800000;
+    --p2-soft:rgba(128,0,0,.16);
+
+    --mine:#ff0000;
+    --mine-soft:var(--face);
+    --win:#008000;
+
+    --cell:#c0c0c0;
+    --cell-hover:#d4d0c8;
+    --cell-open:#c0c0c0;
+
+    --lcd-bg:#000000;
+    --lcd-fg:#ff0000;
+    --lcd-win:#00ff00;
+
+    --n1:#0000ff; --n2:#008200; --n3:#ff0000; --n4:#000084;
+    --n5:#840000; --n6:#008284; --n7:#000000; --n8:#808080;
+
+    --font-body:Tahoma,'Segoe UI',Verdana,Arial,sans-serif;
+    --font-mono:Consolas,'Courier New',monospace;
+  }
+
+  *{box-sizing:border-box; border-radius:0 !important;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100%;
+  }
+
+  .app{
+    max-width:920px;
+    margin:0 auto;
+    padding-inline:16px;
+    padding-block:20px 40px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:14px;
+    flex-wrap:wrap;
+    border-bottom:2px groove var(--face);
+    padding-bottom:14px;
+  }
+  .brand h1{
+    margin:0;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:clamp(22px,5vw,30px);
+    letter-spacing:.02em;
+    color:var(--p1);
+    text-shadow:1px 1px 0 var(--face-light);
+    line-height:1;
+  }
+  .brand p{
+    margin:6px 0 0;
+    font-size:12.5px;
+    color:var(--text-dim);
+    letter-spacing:.02em;
+  }
+  .header-controls{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .diff-group{
+    display:flex;
+    background:var(--face);
+    border:2px inset var(--face);
+    padding:3px;
+    gap:2px;
+  }
+  .diff-btn{
+    appearance:none;
+    border:2px outset var(--face);
+    background:var(--face);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:12.5px;
+    padding:6px 11px;
+    cursor:pointer;
+  }
+  .diff-btn:hover{background:var(--face-light);}
+  .diff-btn:active{border-style:inset;}
+  .diff-btn.active{border-style:inset; background:var(--panel-soft); color:var(--text);}
+
+  .icon-btn{
+    appearance:none;
+    border:2px outset var(--face);
+    background:var(--face);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:12.5px;
+    padding:7px 12px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .icon-btn:hover{background:var(--face-light);}
+  .icon-btn:active{border-style:inset;}
+
+  .mode-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .mode-label{
+    font-size:12px;
+    font-weight:700;
+    color:var(--text);
+    letter-spacing:.02em;
+  }
+
+  /* ---------- arena (panels + board) ---------- */
+  .arena{
+    display:grid;
+    grid-template-columns:minmax(0,190px) minmax(0,1fr) minmax(0,190px);
+    grid-template-areas:"p1 board p2";
+    gap:14px;
+    align-items:start;
+  }
+  @media (max-width:720px){
+    .arena{
+      grid-template-columns:1fr 1fr;
+      grid-template-areas:
+        "p1 p2"
+        "board board";
+    }
+  }
+
+  .panel{
+    background:var(--panel);
+    border:2px outset var(--face);
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    position:relative;
+    overflow:hidden;
+  }
+  .panel.p1{grid-area:p1;}
+  .panel.p2{grid-area:p2;}
+  .panel.active.p1{box-shadow:inset 0 0 0 2px var(--p1);}
+  .panel.active.p2{box-shadow:inset 0 0 0 2px var(--p2);}
+
+  .panel-head{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .name-input{
+    appearance:none;
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--text);
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:13px;
+    padding:2px 0;
+    width:100%;
+  }
+  .name-input:focus{outline:none; border-bottom:1px solid var(--line);}
+  .panel.p1 .name-input{color:var(--p1);}
+  .panel.p2 .name-input{color:var(--p2);}
+
+  .turn-badge{
+    font-family:var(--font-body);
+    font-size:9.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    color:#fff;
+    background:var(--text-faint);
+    border:1px outset var(--face);
+    padding:2px 8px;
+    white-space:nowrap;
+    opacity:0;
+    transform:translateY(-2px);
+    transition:opacity .2s, transform .2s;
+  }
+  .panel.active .turn-badge{opacity:1; transform:translateY(0);}
+  .panel.p1.active .turn-badge{background:var(--p1); animation:pulse-p1 1.4s ease-in-out infinite;}
+  .panel.p2.active .turn-badge{background:var(--p2); animation:pulse-p2 1.4s ease-in-out infinite;}
+  @keyframes pulse-p1{0%,100%{box-shadow:0 0 0 0 var(--p1-soft);}50%{box-shadow:0 0 0 5px transparent;}}
+  @keyframes pulse-p2{0%,100%{box-shadow:0 0 0 0 var(--p2-soft);}50%{box-shadow:0 0 0 5px transparent;}}
+
+  .score{
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+    font-size:clamp(24px,5.5vw,32px);
+    line-height:1;
+    display:inline-block;
+    background:var(--lcd-bg);
+    color:var(--lcd-fg);
+    padding:4px 10px;
+    border:2px inset var(--face);
+  }
+  .score-label{font-size:10px; color:var(--text); font-weight:700; letter-spacing:.09em; text-transform:uppercase; margin-top:6px;}
+
+  .stat-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:11.5px;
+    color:var(--text);
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    border-top:1px solid var(--line);
+    padding-top:8px;
+  }
+
+  /* ---------- status bar ---------- */
+  .status-bar{
+    grid-area:board;
+    display:none;
+  }
+  .status-strip{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    flex-wrap:wrap;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text);
+    letter-spacing:.02em;
+  }
+  .status-strip b{
+    display:inline-block;
+    background:var(--lcd-bg);
+    color:var(--lcd-fg);
+    font-weight:700;
+    padding:2px 7px;
+    border:2px inset var(--face);
+  }
+  .flag-toggle{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .flag-toggle button{
+    appearance:none;
+    border:2px outset var(--face);
+    background:var(--face);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:12px;
+    padding:6px 11px;
+    cursor:pointer;
+  }
+  .flag-toggle button:hover{background:var(--face-light);}
+  .flag-toggle button.on{
+    border-style:inset;
+    background:var(--panel-soft);
+  }
+
+  /* ---------- board ---------- */
+  .board-wrap{
+    grid-area:board;
+    display:flex;
+    justify-content:center;
+    padding:4px;
+  }
+  .board{
+    display:grid;
+    gap:1px;
+    width:min(100%, 480px);
+    background:var(--line);
+    border:3px inset var(--face);
+    padding:6px;
+    touch-action:manipulation;
+  }
+  .cell{
+    background:var(--cell);
+    border:2px outset var(--face);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:clamp(9px,2.4vw,15px);
+    cursor:pointer;
+    user-select:none;
+    position:relative;
+  }
+  .cell:hover:not(.revealed):not(.flagged){background:var(--cell-hover);}
+  .cell.revealed{background:var(--cell-open); border:1px solid var(--line); cursor:default;}
+  .cell.revealed.by-p1{box-shadow:inset 0 -3px 0 var(--p1);}
+  .cell.revealed.by-p2{box-shadow:inset 0 -3px 0 var(--p2);}
+  .cell.boom{background:var(--mine); border:1px solid var(--line); animation:shake .35s;}
+  .cell.boom.by-p1{box-shadow:inset 0 -3px 0 var(--p1);}
+  .cell.boom.by-p2{box-shadow:inset 0 -3px 0 var(--p2);}
+  .cell.mine-reveal{background:var(--mine-soft);}
+  .cell.flagged.flag-p1{box-shadow:inset 0 -3px 0 var(--p1);}
+  .cell.flagged.flag-p2{box-shadow:inset 0 -3px 0 var(--p2);}
+  .cell.pop{animation:pop .16s ease-out;}
+  @keyframes pop{from{transform:scale(.7);} to{transform:scale(1);}}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+
+  .n1{color:var(--n1);} .n2{color:var(--n2);} .n3{color:var(--n3);} .n4{color:var(--n4);}
+  .n5{color:var(--n5);} .n6{color:var(--n6);} .n7{color:var(--n7);} .n8{color:var(--n8);}
+
+  @media (prefers-reduced-motion:reduce){
+    .cell,.panel,.turn-badge,.flash-overlay{animation:none !important; transition:none !important;}
+  }
+
+  .flash-overlay{
+    position:fixed;
+    inset:0;
+    background:radial-gradient(circle, rgba(239,68,68,.6), rgba(239,68,68,0) 70%);
+    pointer-events:none;
+    opacity:0;
+    z-index:15;
+  }
+  .flash-overlay.active{ animation:flashPulse .6s ease-out; }
+  @keyframes flashPulse{ 0%{opacity:1;} 100%{opacity:0;} }
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(4,7,12,.72);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:20;
+  }
+  .modal{
+    background:var(--panel);
+    border:3px outset var(--face);
+    padding:26px 24px;
+    max-width:380px;
+    width:100%;
+    text-align:center;
+    box-shadow:6px 6px 0 rgba(0,0,0,.35);
+  }
+  .modal h2{
+    margin:0 0 6px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:.02em;
+    color:var(--text);
+  }
+  .modal .winner-line{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--text-dim);
+    margin-bottom:16px;
+  }
+  .final-scores{
+    display:flex;
+    justify-content:center;
+    gap:22px;
+    margin-bottom:20px;
+  }
+  .final-score-item .num{
+    font-family:var(--font-mono); font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;
+    background:var(--lcd-bg); color:var(--lcd-fg); padding:4px 12px; border:2px inset var(--face);
+    display:inline-block;
+  }
+  .final-score-item .lbl{font-size:11px; color:var(--text); font-weight:700; letter-spacing:.06em; margin-top:6px;}
+  .final-score-item.win .num{color:var(--lcd-win);}
+  .modal-actions{display:flex; gap:10px; justify-content:center;}
+  .btn-primary{
+    appearance:none;
+    border:2px outset var(--face);
+    background:var(--face);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:13.5px;
+    padding:10px 20px;
+    cursor:pointer;
+  }
+  .btn-primary:hover{background:var(--face-light);}
+  .btn-primary:active{border-style:inset;}
+  .btn-ghost{
+    appearance:none;
+    border:2px outset var(--face);
+    background:var(--face);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13.5px;
+    padding:10px 16px;
+    cursor:pointer;
+  }
+  .btn-ghost:active{border-style:inset;}
+  .rules-list{
+    text-align:left;
+    font-size:13px;
+    color:var(--text);
+    line-height:1.7;
+    margin:0 0 18px;
+    padding-left:18px;
+  }
+  .rules-list li b{color:var(--text);}
+  .rules-list li span.p1c{color:var(--p1); font-weight:700;}
+  .rules-list li span.p2c{color:var(--p2); font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>MINE DUEL</h1>
+      <p>1つの盤面を交互に開いて得点を競う、地雷モードが選べる対戦型マインスイーパー</p>
+    </div>
+    <div class="header-controls">
+      <div class="diff-group" id="diffGroup">
+        <button class="diff-btn" data-diff="easy">かんたん</button>
+        <button class="diff-btn active" data-diff="medium">ふつう</button>
+        <button class="diff-btn" data-diff="hard">むずかしい</button>
+        <button class="diff-btn" data-diff="party">地雷だらけ</button>
+      </div>
+      <button class="icon-btn" id="rulesBtn">？ ルール</button>
+      <button class="icon-btn" id="restartBtn">↻ リスタート</button>
+    </div>
+  </header>
+
+  <div class="mode-row">
+    <span class="mode-label">地雷モード</span>
+    <div class="diff-group" id="mineModeGroup">
+      <button class="diff-btn" data-mode="penalty">-5点</button>
+      <button class="diff-btn" data-mode="reset">0点リセット</button>
+      <button class="diff-btn active" data-mode="instant">即敗北</button>
+    </div>
+    <span class="mode-label">初手</span>
+    <div class="diff-group" id="safeFirstGroup">
+      <button class="diff-btn active" data-safe="off">安全なし</button>
+      <button class="diff-btn" data-safe="on">1マス目は安全</button>
+    </div>
+    <span class="mode-label">開始時</span>
+    <div class="diff-group" id="startOpenGroup">
+      <button class="diff-btn active" data-start="off">通常</button>
+      <button class="diff-btn" data-start="on">1マス開放して開始</button>
+    </div>
+    <span class="mode-label">制限時間</span>
+    <div class="diff-group" id="timeLimitGroup">
+      <button class="diff-btn active" data-time="0">なし</button>
+      <button class="diff-btn" data-time="60">1分</button>
+      <button class="diff-btn" data-time="180">3分</button>
+      <button class="diff-btn" data-time="300">5分</button>
+    </div>
+  </div>
+
+  <div class="arena">
+    <div class="panel p1 active" id="panel1">
+      <div class="panel-head">
+        <input class="name-input" id="name1" value="プレイヤー1" maxlength="10" />
+        <span class="turn-badge">YOUR TURN</span>
+      </div>
+      <div>
+        <div class="score" id="score1">0</div>
+        <div class="score-label">スコア</div>
+      </div>
+      <div class="stat-row"><span>地雷ヒット</span><span id="hits1">0</span></div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-strip">
+        <span>残り時間 <b id="timeLeft">∞</b></span>
+        <span>残り地雷 <b id="minesLeft">10</b></span>
+        <span>残りマス <b id="cellsLeft">71</b></span>
+        <span class="flag-toggle"><button id="flagModeBtn">🚩 フラグモード</button></span>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="panel p2" id="panel2">
+      <div class="panel-head">
+        <input class="name-input" id="name2" value="プレイヤー2" maxlength="10" />
+        <span class="turn-badge">YOUR TURN</span>
+      </div>
+      <div>
+        <div class="score" id="score2">0</div>
+        <div class="score-label">スコア</div>
+      </div>
+      <div class="stat-row"><span>地雷ヒット</span><span id="hits2">0</span></div>
+    </div>
+  </div>
+
+  <div class="status-strip" id="statusStripMobile" style="display:flex;">
+    <span>残り時間 <b id="timeLeft2">∞</b></span>
+    <span>残り地雷 <b id="minesLeft2">10</b></span>
+    <span>残りマス <b id="cellsLeft2">71</b></span>
+    <span class="flag-toggle"><button id="flagModeBtn2">🚩 フラグモード</button></span>
+  </div>
+</div>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="overlay" id="gameOverOverlay" hidden>
+  <div class="modal">
+    <h2 id="gameOverTitle">ゲーム終了</h2>
+    <div class="winner-line" id="gameOverSub">全マス開放完了</div>
+    <div class="final-scores">
+      <div class="final-score-item" id="finalItem1">
+        <div class="num" id="finalScore1">0</div>
+        <div class="lbl" id="finalName1">プレイヤー1</div>
+      </div>
+      <div class="final-score-item" id="finalItem2">
+        <div class="num" id="finalScore2">0</div>
+        <div class="lbl" id="finalName2">プレイヤー2</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="playAgainBtn">もう一度あそぶ</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rulesOverlay" hidden>
+  <div class="modal">
+    <h2>対戦ルール</h2>
+    <ol class="rules-list">
+      <li>1つの盤面を<b>交互に</b>クリックして開いていきます。「初手」の設定が<b>安全なし</b>なら最初の一手にも地雷の危険があり、<b>1マス目は安全</b>なら最初にクリックしたマスとその周囲には地雷が置かれません。</li>
+      <li>安全なマスを開くと、<b>開いたマスの数だけ得点</b>（連鎖も加算）。</li>
+      <li>地雷を踏んだときの結果は<b>地雷モード</b>で選べます — 「即敗北」はその場でゲーム終了・相手の勝ち、「0点リセット」は踏んだ人のスコアが0に、「-5点」は踏んだ人が-5点。どのモードも旗を立てたマスは踏みません。</li>
+      <li>右クリック（またはフラグモード）でマスに旗を立てられます。旗は目印だけで得点には影響しません。</li>
+      <li>誰も爆発せず<b>安全なマスを全て開き切ったら終了</b>。<span class="p1c">プレイヤー1</span>と<span class="p2c">プレイヤー2</span>のスコアが高い方の勝ちです。</li>
+      <li>先手が有利になりすぎないよう、「開始時」を<b>1マス開放して開始</b>にすると、対戦開始前に誰の得点にもならない安全なマスが1つ自動で開いた状態からスタートします。</li>
+      <li><b>制限時間</b>を設定すると残り時間が0になった時点で強制終了し、その時点のスコアが高い方の勝ちになります(「なし」なら無制限)。</li>
+      <li>難易度の<b>「地雷だらけ」</b>は盤面の半分以上が地雷という超高密度モードです。</li>
+    </ol>
+    <div class="modal-actions">
+      <button class="btn-primary" id="closeRulesBtn">わかった</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DIFFS = {
+    easy:   { rows:9,  cols:9,  mines:10 },
+    medium: { rows:12, cols:12, mines:24 },
+    hard:   { rows:16, cols:14, mines:44 },
+    party:  { rows:12, cols:12, mines:75 }
+  };
+  var NUM_CLASS = ["","n1","n2","n3","n4","n5","n6","n7","n8"];
+
+  var boardEl = document.getElementById('board');
+  var score1El = document.getElementById('score1');
+  var score2El = document.getElementById('score2');
+  var hits1El = document.getElementById('hits1');
+  var hits2El = document.getElementById('hits2');
+  var panel1El = document.getElementById('panel1');
+  var panel2El = document.getElementById('panel2');
+  var minesLeftEls = [document.getElementById('minesLeft'), document.getElementById('minesLeft2')];
+  var cellsLeftEls = [document.getElementById('cellsLeft'), document.getElementById('cellsLeft2')];
+  var flagModeBtns = [document.getElementById('flagModeBtn'), document.getElementById('flagModeBtn2')];
+  var name1El = document.getElementById('name1');
+  var name2El = document.getElementById('name2');
+  var timeLeftEls = [document.getElementById('timeLeft'), document.getElementById('timeLeft2')];
+
+  var state = null;
+  var flagMode = false;
+  var currentDiff = 'medium';
+  var currentMineMode = 'instant'; // 'instant' | 'reset' | 'penalty'
+  var currentSafeFirst = false;
+  var currentStartOpen = false;
+  var currentTimeLimit = 0; // seconds, 0 = no limit
+  var timerInterval = null;
+  var timeRemaining = 0;
+
+  function idx(r,c,cols){ return r*cols+c; }
+
+  function neighbors(r,c,rows,cols){
+    var out = [];
+    for(var dr=-1; dr<=1; dr++){
+      for(var dc=-1; dc<=1; dc++){
+        if(dr===0 && dc===0) continue;
+        var nr=r+dr, nc=c+dc;
+        if(nr>=0 && nr<rows && nc>=0 && nc<cols) out.push(idx(nr,nc,cols));
+      }
+    }
+    return out;
+  }
+
+  function newGame(diffKey){
+    currentDiff = diffKey;
+    var d = DIFFS[diffKey];
+    var total = d.rows*d.cols;
+    var cells = new Array(total);
+    for(var i=0;i<total;i++){
+      cells[i] = { mine:false, adj:0, revealed:false, flaggedBy:null, revealedBy:null, boom:false };
+    }
+    state = {
+      rows:d.rows, cols:d.cols, mines:d.mines,
+      cells:cells,
+      current:1,
+      scores:{1:0,2:0},
+      hits:{1:0,2:0},
+      revealedSafe:0,
+      totalSafe: total - d.mines,
+      flagsPlaced:0,
+      over:false,
+      mineMode: currentMineMode,
+      safeFirst: currentSafeFirst,
+      startOpen: currentStartOpen,
+      timeLimit: currentTimeLimit,
+      minesPlaced:false
+    };
+    if(state.startOpen || !state.safeFirst){
+      placeMines();
+    }
+    buildBoardDom();
+    if(state.startOpen && state.minesPlaced){
+      autoRevealStart();
+    }
+    updateAllUi();
+    document.getElementById('gameOverOverlay').hidden = true;
+    startTimer();
+    if(state.revealedSafe >= state.totalSafe){
+      endGame();
+    }
+  }
+
+  function placeMines(excludeIdx){
+    var d = state;
+    var total = d.rows*d.cols;
+
+    var forbidden = {};
+    if(excludeIdx !== undefined && excludeIdx !== null){
+      forbidden[excludeIdx] = true;
+      var r0 = Math.floor(excludeIdx/d.cols), c0 = excludeIdx%d.cols;
+      neighbors(r0,c0,d.rows,d.cols).forEach(function(n){ forbidden[n]=true; });
+    }
+
+    var pool = [];
+    for(var i=0;i<total;i++) if(!forbidden[i]) pool.push(i);
+    for(var i=pool.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = pool[i]; pool[i]=pool[j]; pool[j]=t;
+    }
+    var mineCount = Math.min(d.mines, pool.length);
+    for(var i=0;i<mineCount;i++) d.cells[pool[i]].mine = true;
+
+    for(var r=0;r<d.rows;r++){
+      for(var c=0;c<d.cols;c++){
+        var cell = d.cells[idx(r,c,d.cols)];
+        if(cell.mine) continue;
+        var count = 0;
+        neighbors(r,c,d.rows,d.cols).forEach(function(n){ if(d.cells[n].mine) count++; });
+        cell.adj = count;
+      }
+    }
+    d.minesPlaced = true;
+  }
+
+  function buildBoardDom(){
+    var d = state;
+    boardEl.innerHTML = '';
+    boardEl.style.gridTemplateColumns = 'repeat('+d.cols+', 1fr)';
+    boardEl.style.gridTemplateRows = 'repeat('+d.rows+', 1fr)';
+    boardEl.style.aspectRatio = d.cols + ' / ' + d.rows;
+    var frag = document.createDocumentFragment();
+    for(var i=0;i<d.cells.length;i++){
+      var div = document.createElement('div');
+      div.className = 'cell';
+      div.dataset.idx = i;
+      frag.appendChild(div);
+    }
+    boardEl.appendChild(frag);
+  }
+
+  function autoRevealStart(){
+    var d = state;
+    var zeroCells = [];
+    var anyCells = [];
+    for(var i=0;i<d.cells.length;i++){
+      var c = d.cells[i];
+      if(!c.mine){
+        anyCells.push(i);
+        if(c.adj===0) zeroCells.push(i);
+      }
+    }
+    var pool = zeroCells.length ? zeroCells : anyCells;
+    if(!pool.length) return;
+    var seed = pool[Math.floor(Math.random()*pool.length)];
+    var revealedNow = floodReveal(seed, 0);
+    revealedNow.forEach(function(i2){ renderCell(i2); });
+  }
+
+  function cellDom(i){ return boardEl.children[i]; }
+
+  function renderCell(i){
+    var d = state;
+    var cell = d.cells[i];
+    var el = cellDom(i);
+    el.className = 'cell';
+    el.textContent = '';
+    el.style.color = '';
+
+    if(cell.revealed){
+      el.classList.add('revealed');
+      if(cell.revealedBy===1) el.classList.add('by-p1');
+      if(cell.revealedBy===2) el.classList.add('by-p2');
+      if(cell.mine){
+        el.textContent = '💣';
+        if(cell.boom) el.classList.add('boom');
+        else el.classList.add('mine-reveal');
+      } else if(cell.adj>0){
+        el.textContent = cell.adj;
+        el.classList.add(NUM_CLASS[cell.adj]);
+      }
+    } else if(cell.flaggedBy){
+      el.classList.add('flagged');
+      el.classList.add(cell.flaggedBy===1 ? 'flag-p1':'flag-p2');
+      el.textContent = '🚩';
+    }
+  }
+
+  function renderAllCells(){
+    for(var i=0;i<state.cells.length;i++) renderCell(i);
+  }
+
+  function updateScoreboard(){
+    score1El.textContent = state.scores[1];
+    score2El.textContent = state.scores[2];
+    hits1El.textContent = state.hits[1];
+    hits2El.textContent = state.hits[2];
+    panel1El.classList.toggle('active', state.current===1 && !state.over);
+    panel2El.classList.toggle('active', state.current===2 && !state.over);
+  }
+
+  function updateCounters(){
+    var minesLeft = state.mines - state.flagsPlaced;
+    var cellsLeft = state.totalSafe - state.revealedSafe;
+    minesLeftEls.forEach(function(el){ if(el) el.textContent = minesLeft; });
+    cellsLeftEls.forEach(function(el){ if(el) el.textContent = cellsLeft; });
+  }
+
+  function updateAllUi(){
+    updateScoreboard();
+    updateCounters();
+  }
+
+  function switchTurn(){
+    state.current = state.current===1 ? 2 : 1;
+    updateScoreboard();
+  }
+
+  function floodReveal(startIdx, owner){
+    var d = state;
+    var who = (owner === undefined) ? state.current : owner;
+    var stack = [startIdx];
+    var revealedNow = [];
+    var visited = {};
+    visited[startIdx] = true;
+    while(stack.length){
+      var i = stack.pop();
+      var cell = d.cells[i];
+      if(cell.revealed || cell.flaggedBy) continue;
+      cell.revealed = true;
+      cell.revealedBy = who;
+      revealedNow.push(i);
+      state.revealedSafe++;
+      if(cell.adj===0){
+        var r = Math.floor(i/d.cols), c = i%d.cols;
+        neighbors(r,c,d.rows,d.cols).forEach(function(n){
+          if(!visited[n] && !d.cells[n].revealed && !d.cells[n].mine && !d.cells[n].flaggedBy){
+            visited[n]=true;
+            stack.push(n);
+          }
+        });
+      }
+    }
+    return revealedNow;
+  }
+
+  function onReveal(i){
+    var d = state;
+    var cell = d.cells[i];
+    if(state.over || cell.revealed || cell.flaggedBy) return;
+
+    if(!state.minesPlaced){
+      placeMines(i);
+    }
+
+    if(cell.mine){
+      hitMine(i);
+      return;
+    }
+
+    var revealedNow = floodReveal(i);
+    state.scores[state.current] += revealedNow.length;
+    revealedNow.forEach(function(idx2){
+      renderCell(idx2);
+      var el = cellDom(idx2);
+      el.classList.add('pop');
+    });
+    updateAllUi();
+
+    if(state.revealedSafe >= state.totalSafe){
+      endGame();
+      return;
+    }
+    switchTurn();
+  }
+
+  function onFlagToggle(i){
+    var d = state;
+    var cell = d.cells[i];
+    if(state.over || cell.revealed) return;
+    if(cell.flaggedBy){
+      if(cell.flaggedBy === state.current){
+        cell.flaggedBy = null;
+        state.flagsPlaced--;
+      }
+    } else {
+      cell.flaggedBy = state.current;
+      state.flagsPlaced++;
+    }
+    renderCell(i);
+    updateCounters();
+  }
+
+  function revealRemainingMines(){
+    for(var i=0;i<state.cells.length;i++){
+      var cell = state.cells[i];
+      if(cell.mine && !cell.revealed){
+        cell.revealed = true;
+        renderCell(i);
+      }
+    }
+  }
+
+  function showGameOverModal(title, sub, winnerPlayer){
+    var s1 = state.scores[1], s2 = state.scores[2];
+    var n1 = name1El.value.trim() || 'プレイヤー1';
+    var n2 = name2El.value.trim() || 'プレイヤー2';
+    var item1 = document.getElementById('finalItem1');
+    var item2 = document.getElementById('finalItem2');
+    item1.classList.remove('win'); item2.classList.remove('win');
+    if(winnerPlayer===1) item1.classList.add('win');
+    if(winnerPlayer===2) item2.classList.add('win');
+
+    document.getElementById('gameOverTitle').textContent = title;
+    document.getElementById('gameOverSub').textContent = sub;
+    document.getElementById('finalScore1').textContent = s1;
+    document.getElementById('finalScore2').textContent = s2;
+    document.getElementById('finalName1').textContent = n1;
+    document.getElementById('finalName2').textContent = n2;
+    document.getElementById('gameOverOverlay').hidden = false;
+  }
+
+  function hitMine(i){
+    var d = state;
+    var cell = d.cells[i];
+    cell.revealed = true;
+    cell.revealedBy = state.current;
+    cell.boom = true;
+    state.hits[state.current] += 1;
+    renderCell(i);
+    triggerFlash();
+
+    var hitter = state.current;
+
+    if(state.mineMode === 'instant'){
+      state.over = true;
+      clearTimerInterval();
+      revealRemainingMines();
+      updateScoreboard();
+      var winner = hitter===1 ? 2 : 1;
+      var loserName = (hitter===1 ? name1El.value : name2El.value).trim() || ('プレイヤー'+hitter);
+      var winnerName = (winner===1 ? name1El.value : name2El.value).trim() || ('プレイヤー'+winner);
+      showGameOverModal(winnerName + ' の勝利！', loserName + ' が地雷を踏んで爆発……', winner);
+      return;
+    }
+
+    if(state.mineMode === 'reset'){
+      state.scores[hitter] = 0;
+    } else {
+      state.scores[hitter] -= 5;
+    }
+    updateAllUi();
+    switchTurn();
+  }
+
+  function triggerFlash(){
+    var flash = document.getElementById('flashOverlay');
+    if(!flash) return;
+    flash.classList.remove('active');
+    void flash.offsetWidth;
+    flash.classList.add('active');
+  }
+
+  function endGame(){
+    state.over = true;
+    clearTimerInterval();
+    revealRemainingMines();
+    updateScoreboard();
+
+    var s1 = state.scores[1], s2 = state.scores[2];
+    var n1 = name1El.value.trim() || 'プレイヤー1';
+    var n2 = name2El.value.trim() || 'プレイヤー2';
+    var title, sub, winnerPlayer;
+
+    if(s1 === s2){
+      title = '引き分け！';
+      sub = '両者互角の戦いでした';
+      winnerPlayer = 0;
+    } else if(s1 > s2){
+      title = n1 + ' の勝利！';
+      sub = '全てのマスを開放しました';
+      winnerPlayer = 1;
+    } else {
+      title = n2 + ' の勝利！';
+      sub = '全てのマスを開放しました';
+      winnerPlayer = 2;
+    }
+    showGameOverModal(title, sub, winnerPlayer);
+  }
+
+  function clearTimerInterval(){
+    if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+  }
+
+  function updateTimerDisplay(){
+    var text;
+    if(!state || state.timeLimit <= 0){
+      text = '∞';
+    } else {
+      var remain = Math.max(0, timeRemaining);
+      var m = Math.floor(remain/60), s = remain%60;
+      text = (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+    }
+    timeLeftEls.forEach(function(el){ if(el) el.textContent = text; });
+  }
+
+  function startTimer(){
+    clearTimerInterval();
+    if(state.timeLimit <= 0){
+      updateTimerDisplay();
+      return;
+    }
+    timeRemaining = state.timeLimit;
+    updateTimerDisplay();
+    timerInterval = setInterval(function(){
+      if(state.over){ clearTimerInterval(); return; }
+      timeRemaining--;
+      updateTimerDisplay();
+      if(timeRemaining <= 0){
+        clearTimerInterval();
+        timeUp();
+      }
+    }, 1000);
+  }
+
+  function timeUp(){
+    if(state.over) return;
+    state.over = true;
+    revealRemainingMines();
+    updateScoreboard();
+
+    var s1 = state.scores[1], s2 = state.scores[2];
+    var n1 = name1El.value.trim() || 'プレイヤー1';
+    var n2 = name2El.value.trim() || 'プレイヤー2';
+    var title, sub, winnerPlayer;
+
+    if(s1 === s2){
+      title = '引き分け！';
+      sub = '時間切れ - 両者互角の戦いでした';
+      winnerPlayer = 0;
+    } else if(s1 > s2){
+      title = n1 + ' の勝利！';
+      sub = '時間切れ - スコアが上回りました';
+      winnerPlayer = 1;
+    } else {
+      title = n2 + ' の勝利！';
+      sub = '時間切れ - スコアが上回りました';
+      winnerPlayer = 2;
+    }
+    showGameOverModal(title, sub, winnerPlayer);
+  }
+
+  boardEl.addEventListener('click', function(e){
+    var target = e.target.closest('.cell');
+    if(!target) return;
+    var i = parseInt(target.dataset.idx, 10);
+    if(flagMode) onFlagToggle(i); else onReveal(i);
+  });
+  boardEl.addEventListener('contextmenu', function(e){
+    var target = e.target.closest('.cell');
+    if(!target) return;
+    e.preventDefault();
+    var i = parseInt(target.dataset.idx, 10);
+    onFlagToggle(i);
+  });
+
+  function setFlagMode(on){
+    flagMode = on;
+    flagModeBtns.forEach(function(btn){
+      if(!btn) return;
+      btn.classList.toggle('on', on);
+    });
+  }
+  flagModeBtns.forEach(function(btn){
+    if(!btn) return;
+    btn.addEventListener('click', function(){ setFlagMode(!flagMode); });
+  });
+
+  document.getElementById('diffGroup').addEventListener('click', function(e){
+    var btn = e.target.closest('.diff-btn');
+    if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#diffGroup .diff-btn'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    newGame(btn.dataset.diff);
+  });
+
+  document.getElementById('mineModeGroup').addEventListener('click', function(e){
+    var btn = e.target.closest('.diff-btn');
+    if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#mineModeGroup .diff-btn'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentMineMode = btn.dataset.mode;
+    newGame(currentDiff);
+  });
+
+  document.getElementById('safeFirstGroup').addEventListener('click', function(e){
+    var btn = e.target.closest('.diff-btn');
+    if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#safeFirstGroup .diff-btn'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentSafeFirst = btn.dataset.safe === 'on';
+    newGame(currentDiff);
+  });
+
+  document.getElementById('startOpenGroup').addEventListener('click', function(e){
+    var btn = e.target.closest('.diff-btn');
+    if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#startOpenGroup .diff-btn'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentStartOpen = btn.dataset.start === 'on';
+    newGame(currentDiff);
+  });
+
+  document.getElementById('timeLimitGroup').addEventListener('click', function(e){
+    var btn = e.target.closest('.diff-btn');
+    if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#timeLimitGroup .diff-btn'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentTimeLimit = parseInt(btn.dataset.time, 10);
+    newGame(currentDiff);
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', function(){ newGame(currentDiff); });
+  document.getElementById('playAgainBtn').addEventListener('click', function(){ newGame(currentDiff); });
+
+  document.getElementById('rulesBtn').addEventListener('click', function(){
+    document.getElementById('rulesOverlay').hidden = false;
+  });
+  document.getElementById('closeRulesBtn').addEventListener('click', function(){
+    document.getElementById('rulesOverlay').hidden = true;
+  });
+
+  newGame('medium');
+})();
+</script>
+</body>
+</html>
