@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>マインデュエル</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c0c0c0">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="マインデュエル">
 <style>
   html, body{ margin:0; padding:0; }
   [hidden]{ display:none !important; }
@@ -1537,6 +1545,16 @@
 
   newGame('medium');
 })();
+</script>
+
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(err){
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
 </script>
 </body>
 </html>
